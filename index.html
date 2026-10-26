@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weekly Reflection Bingo</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+:root{
+  --bg:#f8f6fb; --panel:#ffffff; --ink:#211f2a; --muted:#777280;
+  --purple:#7657e6; --purple2:#a88af4; --soft:#eee9ff; --border:#e6defb;
+  --green:#16856b; --gold:#f5c451; --danger:#b84a63;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:radial-gradient(circle at 10% 0%,#f1ebff 0,transparent 30%),linear-gradient(145deg,#fbfaf7,#f7f4fc 65%);
+  color:var(--ink); min-height:100vh;
+}
+button,input{font:inherit}
+.hidden{display:none!important}
+.shell{max-width:1420px;margin:auto;padding:26px}
+.top{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:20px
+}
+h1{margin:0;font-size:clamp(30px,4vw,50px);letter-spacing:-.04em}
+.subtitle{color:var(--muted);margin-top:7px}
+.roompill{
+  background:#fff;border:1px solid var(--border);padding:10px 14px;border-radius:999px;font-weight:800;
+  box-shadow:0 8px 25px rgba(72,53,135,.08)
+}
+.start{
+  min-height:100vh;display:grid;place-items:center;padding:24px
+}
+.startcard{
+  width:min(720px,100%);background:rgba(255,255,255,.92);border:1px solid var(--border);
+  border-radius:28px;padding:30px;box-shadow:0 24px 70px rgba(77,57,137,.14)
+}
+.startcard h2{font-size:34px;margin:0 0 8px}
+.startcard p{color:var(--muted);line-height:1.5}
+.field{display:grid;gap:7px;margin-top:16px}
+label{font-size:13px;font-weight:800}
+input{
+  width:100%;padding:14px 15px;border:1px solid #dcd4f5;border-radius:14px;background:#fff;outline:none
+}
+input:focus{border-color:var(--purple);box-shadow:0 0 0 3px #eee9ff}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.btn{
+  border:0;border-radius:14px;padding:13px 16px;font-weight:850;cursor:pointer
+}
+.primary{background:linear-gradient(135deg,var(--purple),var(--purple2));color:white}
+.secondary{background:#eeebf9;color:#453d63}
+.ghost{background:#fff;border:1px solid var(--border);color:#51486f}
+.error{margin-top:12px;color:var(--danger);font-size:14px;font-weight:700}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+.board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.card{position:relative;min-height:126px;perspective:800px;cursor:pointer;user-select:none}
+.inner{position:absolute;inset:0;transition:transform .4s ease;transform-style:preserve-3d}
+.card.marked .inner{transform:rotateY(180deg)}
+.face{
+  position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  border-radius:18px;padding:13px;border:1px solid var(--border);display:flex;flex-direction:column;
+  justify-content:space-between;box-shadow:0 8px 24px rgba(56,42,100,.07)
+}
+.front{background:#fff}
+.back{transform:rotateY(180deg);background:linear-gradient(145deg,var(--purple),var(--purple2));color:#fff;border-color:transparent}
+.free .front{background:linear-gradient(145deg,#fff8dd,#ffefb7);border-color:#efd177}
+.num{width:27px;height:27px;border-radius:999px;display:grid;place-items:center;background:var(--soft);color:var(--purple);font-size:11px;font-weight:900}
+.back .num{background:rgba(255,255,255,.22);color:white}
+.prompt{font-size:13px;line-height:1.25;font-weight:800;margin:8px 0}
+.hint{font-size:10.5px;color:var(--muted)}
+.back .hint{color:rgba(255,255,255,.84)}
+.panel{
+  position:sticky;top:18px;background:rgba(255,255,255,.94);border:1px solid var(--border);
+  border-radius:24px;padding:18px;box-shadow:0 16px 40px rgba(65,48,116,.09)
+}
+.statrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat{background:#f8f6fc;border-radius:16px;padding:13px}
+.stat .k{font-size:11px;color:var(--muted);font-weight:850}
+.stat .v{font-size:28px;font-weight:950;color:var(--purple)}
+.progress{height:9px;background:#ece9f2;border-radius:999px;overflow:hidden;margin:8px 0 14px}
+.bar{height:100%;width:0;background:linear-gradient(90deg,var(--purple),var(--purple2));transition:width .25s}
+.status{font-size:13px;line-height:1.45;padding:12px;border-radius:14px;background:#f6f4fb;margin-bottom:12px}
+.status.win{background:#eaf8f4;color:#116a56;font-weight:850}
+.how{font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:14px}
+.sectiontitle{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:950;color:#5d5670;margin:18px 0 8px}
+.leader{
+  background:linear-gradient(135deg,#fff8df,#fff1b8);border:1px solid #f1d67e;border-radius:16px;padding:12px;margin-bottom:9px
+}
+.person{
+  display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 4px;border-bottom:1px solid #eeeaf6
+}
+.person:last-child{border-bottom:0}
+.pname{font-weight:800;font-size:13px}
+.pmeta{font-size:11px;color:var(--muted);margin-top:2px}
+.score{font-weight:950;color:var(--purple)}
+.sharebox{display:grid;gap:8px;margin-top:12px}
+.linkline{display:flex;gap:8px}
+.linkline input{padding:10px 11px;font-size:12px}
+.linkline button{width:auto;white-space:nowrap}
+.hostonly{margin-top:12px;padding-top:12px;border-top:1px solid #eeeaf6}
+.hostbadge{display:inline-block;background:#ebe5ff;color:#6044c5;font-size:10px;font-weight:950;padding:5px 8px;border-radius:999px}
+@media(max-width:1000px){
+  .layout{grid-template-columns:1fr}.panel{position:relative;top:auto}
+}
+@media(max-width:700px){
+  .shell{padding:13px}.board{gap:6px}.card{min-height:112px}.face{padding:9px;border-radius:13px}
+  .prompt{font-size:10.5px}.hint{font-size:9px}.num{width:22px;height:22px;font-size:9px}.top{align-items:flex-start;flex-direction:column}
+  .actions{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<section id="start" class="start">
+  <div class="startcard">
+    <h2>Weekly Reflection Bingo ✨</h2>
+    <p>Everyone marks what happened during their week. The leaderboard updates live, while each person sees and controls only their own board.</p>
+
+    <div class="field">
+      <label>Your name</label>
+      <input id="nameInput" placeholder="e.g. Amal" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Room code — only needed if you are joining</label>
+      <input id="roomInput" placeholder="e.g. ABC12" maxlength="8" autocomplete="off">
+    </div>
+
+    <div class="actions">
+      <button id="hostBtn" class="btn primary">Create room as host</button>
+      <button id="joinBtn" class="btn secondary">Join existing room</button>
+    </div>
+    <div id="startError" class="error"></div>
+  </div>
+</section>
+
+<main id="game" class="shell hidden">
+  <div class="top">
+    <div>
+      <h1>Weekly Reflection Bingo ✨</h1>
+      <div class="subtitle">Click every experience that happened to you this week.</div>
+    </div>
+    <div>
+      <span id="hostBadge" class="hostbadge hidden">HOST VIEW</span>
+      <div class="roompill">Room: <span id="roomCodeText"></span></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <section>
+      <div id="board" class="board"></div>
+    </section>
+
+    <aside class="panel">
+      <div class="how"><strong>How to win:</strong> Get five marked squares across a row, down a column, or diagonally — or mark them all for a full house!</div>
+
+      <div class="statrow">
+        <div class="stat"><div class="k">YOUR SQUARES</div><div id="myCount" class="v">1</div></div>
+        <div class="stat"><div class="k">PEOPLE HERE</div><div id="peopleCount" class="v">1</div></div>
+      </div>
+      <div class="progress"><div id="bar" class="bar"></div></div>
+      <div id="status" class="status">Start marking everything that happened to you this week.</div>
+
+      <button id="resetMe" class="btn ghost">Reset my board</button>
+
+      <div class="sectiontitle">Live leader</div>
+      <div id="leader" class="leader">Waiting for players…</div>
+
+      <div class="sectiontitle">Leaderboard</div>
+      <div id="leaderboard"></div>
+
+      <div id="hostControls" class="hostonly hidden">
+        <div class="sectiontitle">Host controls</div>
+        <div class="sharebox">
+          <div><strong>Share this room</strong></div>
+          <div class="linkline">
+            <input id="shareLink" readonly>
+            <button id="copyBtn" class="btn secondary">Copy link</button>
+          </div>
+          <button id="resetAll" class="btn ghost">Reset everyone's boards</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+const socket = io();
+const prompts = [
+"Customer interaction","Met someone new","Asked for help","Presented something","Learned from a peer",
+"Had a meeting overrun","Had no idea what was going on in a call 😭","Used 2+ SAP internal AI tools","Got unexpected feedback","Learned a new SAP acronym",
+"Asked a question you almost didn’t ask","Shadowed someone","FREE: SAP acronym overload","Changed your approach after feedback","Had priorities change last minute",
+"Spoke up in a meeting","Helped someone else","Learned something outside your role","Had a “wait… now I get it” moment","Followed up with someone after a meeting",
+"Worked on something completely new","Had back-to-back meetings","Made a mistake and learned from it","Took ownership of something","Had one really good conversation"
+];
+
+let selected = new Set([12]);
+let isHost = false;
+let myName = "";
+let roomCode = "";
+
+const qs = new URLSearchParams(location.search);
+if(qs.get("room")) document.getElementById("roomInput").value = qs.get("room").toUpperCase();
+
+function showGame(){
+  document.getElementById("start").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  document.getElementById("roomCodeText").textContent = roomCode;
+  if(isHost){
+    document.getElementById("hostBadge").classList.remove("hidden");
+    document.getElementById("hostControls").classList.remove("hidden");
+    const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(roomCode)}`;
+    document.getElementById("shareLink").value = url;
+  }
+  renderBoard();
+  updateSelf();
+}
+
+function renderBoard(){
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  prompts.forEach((p,i)=>{
+    const card = document.createElement("div");
+    card.className = "card" + (selected.has(i) ? " marked" : "") + (i===12 ? " free" : "");
+    card.innerHTML = `
+      <div class="inner">
+        <div class="face front">
+          <div class="num">${i+1}</div>
+          <div class="prompt">${p}</div>
+          <div class="hint">${i===12 ? "FREE SPACE" : "Click to mark"}</div>
+        </div>
+        <div class="face back">
+          <div class="num">✓</div>
+          <div class="prompt">${p}</div>
+          <div class="hint">${i===12 ? "Always counts!" : "This happened to me"}</div>
+        </div>
+      </div>`;
+    card.onclick = ()=>{ if(i!==12) socket.emit("board:toggle",{index:i}); };
+    board.appendChild(card);
+  });
+}
+
+function bingoCount(){
+  const s = selected;
+  const lines=[];
+  for(let r=0;r<5;r++) lines.push([0,1,2,3,4].map(c=>r*5+c));
+  for(let c=0;c<5;c++) lines.push([0,1,2,3,4].map(r=>r*5+c));
+  lines.push([0,6,12,18,24],[4,8,12,16,20]);
+  return lines.filter(line=>line.every(i=>s.has(i))).length;
+}
+
+function updateSelf(){
+  const n = selected.size;
+  document.getElementById("myCount").textContent = n;
+  document.getElementById("bar").style.width = `${n/25*100}%`;
+  const status = document.getElementById("status");
+  const wins = bingoCount();
+  status.className = "status";
+  if(n===25){
+    status.className = "status win"; status.textContent = "🏆 FULL HOUSE! What a week!";
+  } else if(wins){
+    status.className = "status win"; status.textContent = `🎉 BINGO! You completed ${wins} line${wins>1?"s":""}!`;
+  } else if(n>=15) status.textContent = "At this point, we need to hear about your week 😂";
+  else if(n>=10) status.textContent = "You had a BUSY week! 👀";
+  else if(n>=5) status.textContent = "Okayyy, we have some stories here 👀";
+  else status.textContent = "Start marking everything that happened to you this week.";
+}
+
+document.getElementById("hostBtn").onclick = ()=>{
+  const name = document.getElementById("nameInput").value.trim();
+  if(!name){ document.getElementById("startError").textContent="Please enter your name first."; return; }
+  socket.emit("host:create",{name}, res=>{
+    if(!res.ok) return;
+    isHost=true; myName=name; roomCode=res.roomCode; showGame();
+  });
+};
+
+document.getElementById("joinBtn").onclick = ()=>{
+  const name = document.getElementById("nameInput").value.trim();
+  const code = document.getElementById("roomInput").value.trim().toUpperCase();
+  if(!name || !code){ document.getElementById("startError").textContent="Enter your name and room code."; return; }
+  socket.emit("room:join",{name,roomCode:code}, res=>{
+    if(!res.ok){ document.getElementById("startError").textContent=res.error; return; }
+    myName=res.name; roomCode=res.roomCode; showGame();
+  });
+};
+
+socket.on("board:self", data=>{
+  selected = new Set(data.selected);
+  renderBoard(); updateSelf();
+});
+socket.on("board:reset-all", ()=>{
+  selected = new Set([12]); renderBoard(); updateSelf();
+});
+socket.on("room:update", snap=>{
+  document.getElementById("peopleCount").textContent = snap.participantCount;
+  const leader = snap.leader;
+  document.getElementById("leader").innerHTML = leader
+    ? `<strong>👑 ${leader.name}</strong><br><span style="font-size:12px;color:#71683e">${leader.count} squares marked${leader.fullHouse?" • FULL HOUSE":leader.bingoLines?` • ${leader.bingoLines} Bingo line${leader.bingoLines>1?"s":""}`:""}</span>`
+    : "Waiting for players…";
+
+  const lb = document.getElementById("leaderboard");
+  lb.innerHTML = "";
+  snap.people.forEach((p,idx)=>{
+    const row = document.createElement("div");
+    row.className="person";
+    row.innerHTML=`<div><div class="pname">${idx+1}. ${p.name}${p.name===myName?" (you)":""}${p.isHost?" · Host":""}</div>
+      <div class="pmeta">${p.fullHouse?"Full house 🏆":p.bingoLines?`${p.bingoLines} Bingo line${p.bingoLines>1?"s":""}`:"Still marking…"}</div></div>
+      <div class="score">${p.count}</div>`;
+    lb.appendChild(row);
+  });
+});
+
+document.getElementById("resetMe").onclick=()=>socket.emit("board:reset");
+document.getElementById("resetAll").onclick=()=>{
+  if(confirm("Reset everyone's boards back to the free square?")) socket.emit("host:reset-all");
+};
+document.getElementById("copyBtn").onclick=async()=>{
+  const v=document.getElementById("shareLink").value;
+  try{ await navigator.clipboard.writeText(v); document.getElementById("copyBtn").textContent="Copied!"; setTimeout(()=>document.getElementById("copyBtn").textContent="Copy link",1200); }catch(e){}
+};
+socket.on("room:closed", ()=>{
+  alert("The host ended the room.");
+  location.href=location.pathname;
+});
+</script>
+</body>
+</html>
